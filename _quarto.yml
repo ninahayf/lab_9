@@ -1,0 +1,7 @@
+project:
+  title: "Altitudinal Climate Change (Denver, CO vs New Orleans, LA)"
+  output-dir: docs
+  type: website
+format: 
+  html: 
+    self-contained: true

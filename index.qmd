@@ -1,0 +1,255 @@
+---
+title: "Altitudinal Climate Change (Denver, CO vs New Orleans, LA)"
+authors:
+  - name: Nina Hayford & Sierra Mattiar
+    affiliation: The University
+    roles: writing
+    corresponding: true
+bibliography: references.bib
+format: html
+execute: 
+  echo: true
+---
+
+# Abstract
+
+Climate change has a strange way of impacting different altitudinal regions. Here in Colorado, one week it's 75 degrees and the next week it's snowing. So, what if we compared Denver, CO to a low altitude place that is commonly warm year-round, like New Orleans, LA. Using RStudio, we made visualizations of comparisons between the two cities in multiple different aspects using multiple different forms. These visualizations were able to give us a good picture of how different the two places are impacted by climate change. For our project we found most of our data from the NOAA website and were able to manipulate the data to fit the time frames needed. We also made sure to manipulate the data to make sure there was no missing or empty data place. These datasets included temperature, elevation, humidity, and urban heat. We performed several analyses for our project, comparing different components of our data. Our time series analysis showed upward trends in temperature for warm days in both Denver and New Orleans with Denver having colder winters. A multi-line time series plot compared humidity between the cities, with New Orlenas having higher humidity across all months and times a day. Compared to Denver, peaking at selective months. A multiple linear regression showed how elevation and temperature had a strong correlation. Finally, we conducted an Exploratory Data Analysis comparing minimum and maximum temperatures, average, and extreme minimum and maximum. Both cities show long-term changes in climate patterns.
+
+# Introduction
+
+How much does the temperature in high altitude areas (Denver CO) differ from low altitude areas (New Orleans LA)? It might not seem too different when you’re within 1000 feet of each other, but what happens when it’s a 5000 feet difference between one elevation and another? We wanted our data to look at the extremes of elevation so we can see if there really is a difference in temperature between high and low elevations. So we decided to pick Colorado, the highest elevation in the US [@ONeill_2024], and New Orleans, one of the lowest elevations in the US [@ONeill_2024]. According to [@Penn_LPS_Online_2024a], higher altitude regions tend to respond to climate change in complex ways. Being able to track these interesting changes will provide us with data to help people understand why high and low elevations are impacted by climate change differently. If we manage climate change the same in both regions, we might not be helping anyone because the two areas are affected by climate change so differently. The data we have will help us understand the highly impacted areas that might be suffering from the impacts of climate change more than other areas. Another reason why this topic is important to study is the fact that higher altitude areas are more sensitive to climate shifts [@ITT_User_2023a]. With the climate shifting rapidly, there is much research to be done to see how sensitive these areas are and in what aspect. We will also be including Urban Heat Island effects in Denver and New Orleans. The UHI effect is important to include because at lower elevations, it is probably more humid and has lots of concrete, which makes the summers much hotter. So, the urban heat island effect might have New Orleans warming faster than Denver. Lastly, high altitudes contribute to climate variability and play a role in atmospheric circulation patterns [@ITT_User_2023a] so there could be much more effected by the altitudes than just the climate. In this project, we will be creating visualizations to show what climatic variables are making high and low altitudes respond differently to climate change.
+
+# Methods
+
+We started the project with collecting all the data we needed to be able to successfully show how climate change impacted the two different regions. Thankfully, we were able to find all our data within the NOAA website. Most of the data was in the “Comparative Climatic Data” section of NOAA [@CCD], the denver_neworleans.csv was found in the “Climate Data Online Search” section of NOAA [@Climate_Matters]. Lastly, we needed elevation data, which we collected from the USGS website [@USGS]. After we collected all the data, we needed to see if the data had any missing values. We went through each dataset in excel and replaced the missing values with NA’s and made sure the column names all matched up in each dataset. Then, we transported the data to RStudio in a csv form. We renamed all the dataset so we could keep track of them and so they would be easier to use in code. The data we obtained and the names we used for them were: **cold_days.csv**: Number of days with minimum temperature ≤ 32°F, **denver_neworleans.csv**: Annual temperature data from 2000-2020 for New Orleans and Denver, **elevation.csv**: Elevation data with the peaks and dips of the major US cities, **hightest_temp.csv**: Highest recorded temperature per month, **hot_days.csv**: Number of days with maximum temperature ≥ 90°F, **humidity.csv**: Annual relative humidity by location, **lowest_temp.csv**: Lowest recorded temperature per month, **nrmavg.csv**: Normal daily average temperature, **nrmmax.csv**: Normal daily maximum temperature, **nrmmin.csv**: Normal daily minimum temperature, and **UHI.csv**: Urban heat island effect in 2023 for each city in the US. Each dataset included location information like city, station_ID, or state, then date/year, and the measurement of interest. We then decided to make many visualizations. (1) a line plot comparing humidity between Denver and New Orleans, (2) a bar plot comparing hot and cold days in Denver vs New Orleans, (3) a liner regression model showing elevation vs average annual temperature in Denver vs New Orleans, and (4) a linear regression model showing urban heat index effect vs average annual temperature in Denver vs New Orleans.
+
+# Results
+
+## Time Series Analysis : Average Temperature Trends for Denver vs New Orleans
+
+To investigate the impact of altitude on average temperature trends over time, we performed a time series analysis comparing Denver (high altitude) and New Orleans (low altitude). We aggregated temperature data by city and year, calculating the average temperature for each year. We included a linear regression to get statistical information to see if our data is significant or not.
+
+```{r}
+# Load libraries 
+library(tidyverse)
+library(patchwork)
+library(tsibble)
+
+# Read and clean data
+temp_data <- read_csv("data/denver_neworleans.csv", show_col_types = FALSE)
+
+temp_data_clean <- temp_data %>% 
+  filter(!is.na(TAVG))
+
+# Aggregate data by City and Year, calculating the average temperature for each year
+temp_data_clean <- temp_data %>%
+  filter(!is.na(TAVG)) %>%
+  group_by(City, Year) %>%
+  summarize(Average_Temperature = mean(TAVG, na.rm = TRUE), .groups = "drop")
+
+# Convert to tsibble with Year as the index, while keeping the City column
+temp_data_clean <- temp_data_clean %>%
+  as_tsibble(index = Year, key = City)
+
+# Fit linear models for each city
+model_denver <- lm(Average_Temperature ~ Year, data = temp_data_clean %>% filter(City == "DENVER"))
+model_neworleans <- lm(Average_Temperature ~ Year, data = temp_data_clean %>% filter(City == "NEW ORLEANS"))
+
+# View the summary of the models to extract the coefficients (rate of change)
+summary(model_denver)
+summary(model_neworleans)
+
+# Plot the time series for temperature by city
+ggplot(temp_data_clean, aes(x = Year, y = Average_Temperature, color = City)) +
+  geom_line(linewidth = 1) +  # Line for each city
+  geom_point() +              # Points for each year
+  geom_smooth(se = FALSE, method = "lm") +  # Smoothing trend line for each city
+  labs(title = "Average Temperature over Time: Denver vs New Orleans",
+       x = "Year",
+       y = "Average Temperature (°F)") +
+  theme_minimal() +
+  scale_color_manual(values = c("DENVER" = "skyblue", "NEW ORLEANS" = "deeppink"))
+```
+
+The time series plot shows average temperature trends for both Denver and New Orleans from 2000-2020. As seen in the figure, Denver and New Orleans have very similar fluctuations with New Orleans increasing a bit more. A linear regression was applied to both cities, revealing that Denver's temperature had increased at a rate of 0.037°F per year but the p-value is greater than 0.05, making it not statistically significant. New Orleans temperature had increased at a rate of 0.41°F per year and the p-value was less than 0.05, making it statistically significant.
+
+## EDA of Denver vs New Orleans temperatures
+
+We are using a exploratory data analysis to explore temperature-related variables across both Denver and New Orleans over the years. The key temperature measurements we included were: **EMINT** = extreme min temperature (averaged annually), **EMAXT** = extreme max temperature (averaged annually), **TAVG** = normal temperature (averaged annually), **TMAX** = max temperature (averaged annually), **TMIN** = min temperature (averaged annually), **DT32** = days where the temperature is less than 32°F, **DX90** = days where the temperature is greater than or equal to 90°F. The data for these variables were split by city (Denver and New Orleans) and visualized for each year, showing trends for each measurement type over time.
+
+```{r}
+# Load libraries
+library(tidyverse)
+
+# Read and clean the data
+temp_data <- read_csv("data/denver_neworleans.csv", show_col_types = FALSE) %>%
+  filter(!is.na(TAVG))
+
+# Focus only on the important columns
+selected_vars <- temp_data %>%
+  select(City, Year, EMAXT, EMINT, TMAX, TMIN, DT32, DX90)
+
+# Pivot data longer so each measurement type is a "variable"
+long_temp_data <- selected_vars %>%
+  pivot_longer(cols = c(EMAXT, EMINT, TMAX, TMIN, DT32, DX90),
+               names_to = "Measurement",
+               values_to = "Value")
+
+# Separate data for Denver
+denver_data <- long_temp_data %>%
+  filter(City == "DENVER")
+
+# Separate data for New Orleans
+new_orleans_data <- long_temp_data %>%
+  filter(City == "NEW ORLEANS")
+
+# Plot for Denver
+ggplot(denver_data, aes(x = Year, y = Value, color = City)) +
+  geom_line(color = "skyblue", linewidth = 1) +
+  geom_point(color = "skyblue") +
+  geom_smooth(se = FALSE, method = "lm") +
+  facet_wrap(~ Measurement, scales = "free_y") +
+  labs(title = "Denver",
+       x = "Year",
+       y = "Value") +
+  theme_light() +
+  scale_color_manual(values = c("DENVER" = "skyblue2"))
+
+# Plot for New Orleans
+ggplot(new_orleans_data, aes(x = Year, y = Value, color = City)) +
+  geom_line(color = "deeppink", linewidth = 1) +
+  geom_point(color = "deeppink") +
+  geom_smooth(se = FALSE, method = "lm") +
+  facet_wrap(~ Measurement, scales = "free_y") +
+  labs(title = "New Orleans",
+       x = "Year",
+       y = "Value") +
+  theme_light() +
+  scale_color_manual(values = c("NEW ORLEANS" = "deeppink2"))
+```
+
+After analyzing the trend lines (created from linear smoothing), we can see that Denver has steady fluctuations when it comes to extreme minimum and maximum temperatures over the years. The temperature maximums, minimums, and days 90°F or above have similar upward trends. But, days below 32°F have been slowly decreasing overtime. Then, going to the New Orleans graphs, all of the graphs have a steep upward slant excluding the days below 32°F.
+
+## Monthly Humidity Compison: Denver vs New Orleans
+
+This figure is a multi-line time series plot comparing monthly average humidity between Denver and New Orleans and morning humidity vs afternoon humidity.
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+
+# Load in Data
+humid <- read.csv("data/humidity.csv")
+
+# Fix colnames in humid data
+colnames(humid) <- c("Station ID", "City", "State", "Start Date", "End Date", "JAN_M", "JAN_A", "FEB_M", "FEB_A", "MAR_M", "MAR_A", "APR_M", "APR_A", "MAY_M", "MAY_A", "JUN_M", "JUN_A", "JUL_M", "JUL_A", "AUG_M", "AUG_A", "SEP_M", "SEP_A", "OCT_M", "OCT_A", "NOV_M", "NOV_A", "DEC_M", "DEC_A", "ANN_M", "ANN_A")
+
+# Filter data for Den and NewO
+humid_filtered <- humid %>%
+  filter(City %in% c("DENVER", "NEW ORLEANS")) %>%
+  select(City, JAN_M, JAN_A, FEB_M, FEB_A, MAR_M, MAR_A, APR_M, APR_A, MAY_M, MAY_A, JUN_M, JUN_A, JUL_M, JUL_A, AUG_M, AUG_A, SEP_M, SEP_A, OCT_M, OCT_A, NOV_M, NOV_A, DEC_M, DEC_A, ANN_M, ANN_A)
+
+# Reshape data
+humid_long <- humid_filtered %>%
+  pivot_longer(cols = JAN_M:DEC_A,  
+               names_to = c("Month", "Time"), 
+               names_pattern = "(\\w{3})_(\\w)",
+               values_to = "Humidity")
+
+# Create a new grouping variable: City + Time
+humid_long <- humid_long %>%
+  mutate(CityTime = paste(City, Time, sep = "_"))
+
+head(humid_long)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(humid_long, aes(x = Month, y = Humidity, color = CityTime, group = CityTime)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Monthly Humidity by Time of Day: Denver vs. New Orleans", 
+       x = "Month", 
+       y = "Humidity (%)") +
+  scale_x_discrete(limits = c("JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
+                               "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")) +
+  scale_color_manual(values = c("DENVER_M" = "skyblue",
+                                "DENVER_A" = "skyblue3",
+                                "NEW ORLEANS_M" = "deeppink",
+                                "NEW ORLEANS_A" = "deeppink3")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Overall, New Orleans exhibited consistently higher humidity than Denver across all months for both morning and afternoon periods. Morning humidity was higher than afternoon humidity throughout the year. Denver's humidity is highest in the MAY, NOV, and DEC months while New Orleans humidity is highest in the summer months (JUN-SEP).
+
+## Relationship Between Elevation, Urban Heat Island Effect, and Average Temperature
+
+We analyzed how elevation and the urban heat island (UHI) effect influence average annual temperature (TAVG) across Denver and New Orleans using a multiple linear regression model.
+
+```{r}
+# Read in data 
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+climate_data <- read_csv("data/denver_neworleans.csv", show_col_types = FALSE)
+elevation <- read_csv("data/elevation.csv", show_col_types = FALSE)
+UHI <- read_csv("data/UHI.csv", show_col_types = FALSE)
+
+# Clean and prep datasets 
+elevation <- elevation %>%
+  mutate(Elevation_ft = ( `High Feet` + `Low Feet` ) / 2) %>%
+  select(City, Elevation_ft)
+
+UHI <- UHI %>%
+  rename(UHI_Effect = `Citywide urban heat island effect (rolled-up from census tract data, weighted by area, in degrees F)`) %>%
+  select(City, UHI_Effect)
+
+# Ensure city names are consistent
+climate_data$City <- toupper(climate_data$City)
+elevation$City <- toupper(elevation$City)
+UHI$City <- toupper(UHI$City)
+
+# Merge everything 
+final_data <- climate_data %>%
+  left_join(elevation, by = "City") %>%
+  left_join(UHI, by = "City")
+
+# Remove rows with NA values in the necessary columns
+final_data_clean <- final_data %>%
+  filter(!is.na(TAVG), !is.na(Elevation_ft), !is.na(UHI_Effect))
+
+# Build model 
+model <- lm(TAVG ~ Elevation_ft + UHI_Effect, data = final_data_clean)
+
+summary(model)
+```
+
+```{r}
+# Scatter plot for Elevation vs TAVG
+ggplot(final_data_clean, aes(x = Elevation_ft, y = TAVG, color = City)) +
+  geom_point() +
+  geom_smooth(method = "lm", col = "forestgreen") +
+  labs(title = "Elevation vs. Temperature (TAVG)", x = "Elevation (ft)", y = "Temperature (TAVG)") +
+  scale_color_manual(values = c("NEW ORLEANS" = "deeppink", "DENVER" = "skyblue"))
+```
+
+```{r}
+# Scatter plot for UHI Effect vs TAVG
+ggplot(final_data_clean, aes(x = UHI_Effect, y = TAVG, color = City)) +
+  geom_point() +
+  geom_smooth(method = "lm", col = "purple") +
+  labs(title = "UHI Effect vs. Temperature (TAVG)", x = "UHI Effect (°F)", y = "Temperature (TAVG)") +
+  scale_color_manual(values = c("NEW ORLEANS" = "deeppink", "DENVER" = "skyblue"))
+```
+
+The model showed that elevation was a significant predictor of temperature. In the linear regression analysis of temperature over time, Denver had a p-value of 0.407, indicating no statistically significant warming trend. In contrast, New Orleans had a p-value less than 0.001, suggesting that average temperatures there are steadily increasing. In the multiple linear regression model relating temperature to elevation and UHI effect, only elevation was a statistically significant predictor (p \< 0.001). UHI_effect was not calculated due to its correlation with elevation and temperature. The model had a very high explanatory power (R-squared = 0.985), indicating that variation in temperature was nearly fully explained by elevation alone.
+
+# Discussion/Conclusion
+
+Our goal of this study was to understand how climate change affects temperatures at different altitudes. We did this by comparing annual temperature changes in Denver, Colorado (high elevation) and New Orleans, Louisiana (low elevation). Our hypothesis was that we expected to see a notable difference in temperature trend between the two cities. After our analyses we found that both cities are experiencing an increase in temperature, but New Orleans is rising at a faster rate than Denver. This can show the connection between temperature change and altitude. This conclusion can also include the fact that urbanized and humid regions are more vulnerable to warming. Areas like this are also more susceptible to warming due to Urban Heat Island effect and lack of snow cover compared to areas like Denver. Increased temperatures can lead to greater health risks as well as ecosystem changes. Policies may be implemented to slow the warming, but they may cause unrest and disagreement amongst people. There is also no single strategy that works for all areas due to different fluctuations depending on the region. Our studies seem to align with many other research findings. It seems to be common that elevation influences temperature, but these studies also agree that there are several other factors involved. Altitude has a significant influence on how regions experience changes in climate. When we compared Denver and New Orleans, we found that both cities have been continuously warming over the last two decades. We found that these changes vary depending on factors like intensity, Urban Heat Island effect, altitude, and humidity. Our results draw to the importance of mitigation and implementation of climate strategies. It is important to understand the different components that come into play when discussing solutions for climate change and working towards goals that work for as many people as possible.
